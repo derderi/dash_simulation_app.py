@@ -1,56 +1,77 @@
-﻿# dash_simulation_app.py
-# Simplified educational model - no patient data used
-# Author: Dr. Eldirdiri Fadol, Dr. Moumena Aboulsalam
-# Affiliation: European Nile University & ATLANTA for Liberty Studies
-# License: CC-BY 4.0
-
-import numpy as np
+import dash
+from dash import dcc, html
+from dash.dependencies import Input, Output
 import plotly.graph_objs as go
-from dash import Dash, html, dcc, Input, Output
+import numpy as np
 
-# Initialize Dash app
-app = Dash(__name__)
-server = app.server
+# Initialize the app
+app = dash.Dash(__name__)
+app.title = "Thoracic Vessel Displacement Simulation"
 
 # Layout
-app.layout = html.Div([
-    html.H2("Interactive Simulation: Posterior Aortic Displacement"),
-    html.P("Synthetic visualization of hemodynamic changes at the clavicular level"),
-    
-    dcc.Slider(
-        id='displacement',
-        min=0, max=50, step=1, value=20,
-        marks={0: 'Normal', 25: 'Moderate', 50: 'Severe'}
-    ),
-    html.Div(id='disp-value', style={'margin': '10px 0'}),
-    dcc.Graph(id='hemodynamic-plot')
-])
-
-# Callback to update visualization
-@app.callback(
-    [Output('hemodynamic-plot', 'figure'),
-     Output('disp-value', 'children')],
-    Input('displacement', 'value')
+app.layout = html.Div(
+    style={"fontFamily": "Arial", "padding": "20px"},
+    children=[
+        html.H2("Simulation of Posterior Aortic Displacement at the Clavicular Level"),
+        html.P(
+            "This interactive model demonstrates how posterior displacement of the aortic arch "
+            "affects vessel geometry and potential compression zones. Use the slider to adjust "
+            "the displacement level and observe changes in hemodynamic profiles."
+        ),
+        dcc.Slider(
+            id="displacement-slider",
+            min=0,
+            max=100,
+            step=5,
+            value=30,
+            marks={i: f"{i}%" for i in range(0, 101, 20)},
+        ),
+        dcc.Graph(id="vessel-graph"),
+        html.P(
+            "© 2025 Eldirdiri Fadol & Moumena Aboulsalam — "
+            "European Nile University & ATLANTA for Liberty Studies",
+            style={"fontSize": "13px", "marginTop": "20px", "color": "#666"},
+        ),
+    ],
 )
-def update_plot(disp):
-    # Synthetic data (no patient info)
-    x = np.linspace(0, 2*np.pi, 100)
-    baseline = np.sin(x)
-    altered = np.sin(x - disp/100) * (1 - disp/150)
+
+# Callback: Update plot when slider moves
+@app.callback(
+    Output("vessel-graph", "figure"),
+    Input("displacement-slider", "value"),
+)
+def update_graph(displacement):
+    x = np.linspace(0, 10, 200)
+    normal_aorta = np.sin(x)
+    displaced_aorta = np.sin(x + displacement / 50.0)
+    vein = np.sin(x - 0.5)
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=x, y=baseline, mode='lines', name='Normal Flow', line=dict(color='blue')))
-    fig.add_trace(go.Scatter(x=x, y=altered, mode='lines', name='Posteriorly Displaced Flow', line=dict(color='red')))
-    fig.update_layout(
-        title="Relative Flow Profiles",
-        xaxis_title="Normalized Vessel Distance",
-        yaxis_title="Relative Flow Intensity",
-        template="plotly_white",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    msg = f"Posterior displacement intensity: {disp}%"
-    return fig, msg
 
-# Run app
+    # Normal vessels
+    fig.add_trace(go.Scatter(x=x, y=normal_aorta, mode="lines", name="Normal Aorta", line=dict(color="red", width=3)))
+    fig.add_trace(go.Scatter(x=x, y=vein, mode="lines", name="Vein (SVC)", line=dict(color="blue", width=3)))
+
+    # Displaced vessel
+    fig.add_trace(
+        go.Scatter(
+            x=x, y=displaced_aorta, mode="lines", name="Posteriorly Displaced Aorta",
+            line=dict(color="darkred", width=3, dash="dash")
+        )
+    )
+
+    fig.update_layout(
+        title=f"Posterior Displacement Simulation ({displacement}% shift)",
+        xaxis_title="Relative Thoracic Position",
+        yaxis_title="Flow Path Amplitude",
+        template="simple_white",
+        legend=dict(x=0.02, y=1.08, orientation="h"),
+        margin=dict(l=40, r=40, t=70, b=40)
+    )
+
+    return fig
+
+
+# Run the app (Dash 3+)
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run(debug=True)
